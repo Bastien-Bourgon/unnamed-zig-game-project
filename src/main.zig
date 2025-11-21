@@ -3,7 +3,6 @@ const rl = @import("raylib");
 const fastnoise = @import("fastnoise.zig");
 const mem = @import("std").mem;
 const unnamed_zig_game_project = @import("unnamed_zig_game_project");
-const perlin = @import("perlin3d.zig");
 
 pub fn main() !void {
     // Prints to stderr, ignoring potential errors.
@@ -11,10 +10,6 @@ pub fn main() !void {
     try render();
     noise.seed = rl.getRandomValue(0, 999);
 }
-
-const PERLIN_SCALE = 0.0015;
-const PERLIN_OCTAVES = 4;
-const PERLIN_FALLOFF = 0.5;
 
 const screenWidth = 1280;
 const screenHeight = 720;
@@ -26,10 +21,10 @@ var player_speed: f32 = 2.0;
 var noise = fastnoise.Noise(f32){
     .seed = 0,
     .noise_type = .simplex_smooth,
-    .frequency = 0.005,
-    .gain = 0.40,
+    .frequency = 0.0025,
+    .gain = 0.60,
     .fractal_type = .fbm,
-    .lacunarity = 0.40,
+    .lacunarity = 0.20,
     .octaves = 4,
     .weighted_strength = -0.5,
     .cellular_distance = .euclidean,
@@ -120,7 +115,7 @@ pub fn render() !void {
                 },
                 2 => {},
                 3 => {},
-                else => tile_id = 0,
+                else => unreachable,
             }
             tilemap[@intCast((i * j) - 1)] = tile_id;
             //std.debug.print("X:{} Y:{} ID:{}\n", .{ i, j, tile_id });
