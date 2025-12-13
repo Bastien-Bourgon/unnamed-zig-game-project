@@ -1,20 +1,24 @@
 const std = @import("std");
 const rl = @import("raylib");
 const fastnoise = @import("fastnoise.zig");
+const entity = @import("entity.zig");
 const mem = @import("std").mem;
 const unnamed_zig_game_project = @import("unnamed_zig_game_project");
+const map = @import("maphandler.zig");
 
 pub fn main() !void {
     // Prints to stderr, ignoring potential errors.
     std.debug.print("Initialising...\n", .{});
-    try render();
     noise.seed = rl.getRandomValue(0, 999);
+    try render();
 }
 
 const screenWidth = 1280;
 const screenHeight = 720;
 const mapWidth = 128;
 const mapHeight = 128;
+
+const mapstring = "4,4,4,4,4|1,1,1,1,1|1,1,1,1,1|4,4,4,4,4";
 
 var player_speed: f32 = 2.0;
 
@@ -25,7 +29,7 @@ var noise = fastnoise.Noise(f32){
     .gain = 0.60,
     .fractal_type = .fbm,
     .lacunarity = 0.20,
-    .octaves = 4,
+    .octaves = 1,
     .weighted_strength = -0.5,
     .cellular_distance = .euclidean,
     .cellular_return = .distance2,
@@ -34,7 +38,7 @@ var noise = fastnoise.Noise(f32){
 
 pub fn render() !void {
     rl.initAudioDevice(); // Initialize audio device
-    rl.initWindow(screenWidth, screenHeight, "raylib-zig [core] example - basic window");
+    rl.initWindow(screenWidth, screenHeight, "Project Dreamwave");
     defer rl.closeWindow(); // Close window and OpenGL context
     rl.setTargetFPS(60);
     var camera = rl.Camera2D{
@@ -75,52 +79,10 @@ pub fn render() !void {
     defer rl.unloadTexture(iron_ore);
     defer rl.unloadTexture(gold_ore);
     defer rl.unloadTexture(diamond_ore);
+    defer rl.unloadTexture(oak_log);
 
     //Player object declaration
     var playerPos = rl.Vector2.init(screenWidth / 2, screenHeight / 2);
-
-    //Tilemap generation
-    var tilemap: [mapWidth * mapHeight]i32 = @splat(0);
-    //for (0..tilemap.len) |i| {
-    //    tilemap[@intCast(i)] = @intFromFloat(std.math.round(perlin.noise1(@floatFromInt(i)) * tile_textures.len));
-    //    std.debug.print("{d}\n", .{std.math.round(perlin.noise1(@floatFromInt(i)) * tile_textures.len)});
-    //}
-    for (1..mapWidth) |i| {
-        for (1..mapHeight) |j| {
-            const noise_value: f32 = (noise.genNoise2D(@as(f32, @floatFromInt(i)), @as(f32, @floatFromInt(j))) + 1.0) / 2;
-            var tile_id: i32 = @intFromFloat(std.math.floor(noise_value * 4));
-            std.debug.print("{}\n", .{noise_value});
-            switch (tile_id) {
-                0 => {
-                    const RNG = rl.getRandomValue(0, 1000);
-                    if (RNG <= 5) {
-                        tile_id = 9;
-                    } else {
-                        tile_id = 0;
-                    }
-                },
-                1 => {
-                    const RNG = rl.getRandomValue(0, 1000);
-                    if (RNG <= 1) {
-                        tile_id = 8;
-                    } else if (RNG <= 5) {
-                        tile_id = 7;
-                    } else if (RNG <= 15) {
-                        tile_id = 6;
-                    } else if (RNG <= 30) {
-                        tile_id = 5;
-                    } else {
-                        tile_id = 1;
-                    }
-                },
-                2 => {},
-                3 => {},
-                else => unreachable,
-            }
-            tilemap[@intCast((i * j) - 1)] = tile_id;
-            //std.debug.print("X:{} Y:{} ID:{}\n", .{ i, j, tile_id });
-        }
-    }
 
     // Main game loop
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
@@ -138,6 +100,11 @@ pub fn render() !void {
         if (rl.isKeyDown(.down)) {
             playerPos.y += player_speed;
         }
+        if (rl.isKeyDown(.right_shift)) {
+            player_speed = 4.0;
+        } else {
+            player_speed = 2.0;
+        }
 
         camera.target = .init(playerPos.x + 12, playerPos.y + 16);
         // Draw
@@ -150,7 +117,7 @@ pub fn render() !void {
         camera.begin();
         defer camera.end();
 
-        try drawMap(&tile_textures, &tilemap, mapWidth, mapHeight);
+        try map.drawMapfromMapString(&tile_textures, mapstring);
 
         rl.drawTextureV(player_idle, playerPos, .white);
 
