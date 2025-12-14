@@ -1,6 +1,5 @@
 const std = @import("std");
 const rl = @import("raylib");
-const fastnoise = @import("fastnoise.zig");
 const entity = @import("entity.zig");
 const mem = @import("std").mem;
 const unnamed_zig_game_project = @import("unnamed_zig_game_project");
@@ -9,7 +8,6 @@ const map = @import("maphandler.zig");
 pub fn main() !void {
     // Prints to stderr, ignoring potential errors.
     std.debug.print("Initialising...\n", .{});
-    noise.seed = rl.getRandomValue(0, 999);
     try render();
 }
 
@@ -18,23 +16,9 @@ const screenHeight = 720;
 const mapWidth = 128;
 const mapHeight = 128;
 
-const mapstring = "4,4,4,4,4|1,1,1,1,1|1,1,1,1,1|4,4,4,4,4";
+const mapstring = "4,4,4,4,4,4,4,4,4,4|1,1,1,1,1,1,1,1,1,1|1,1,1,1,1,1,1,1,1,1|1,1,1,1,1,1,1,1,1,1|4,4,4,4,4,4,4,4,4,4";
 
 var player_speed: f32 = 2.0;
-
-var noise = fastnoise.Noise(f32){
-    .seed = 0,
-    .noise_type = .simplex_smooth,
-    .frequency = 0.0025,
-    .gain = 0.60,
-    .fractal_type = .fbm,
-    .lacunarity = 0.20,
-    .octaves = 1,
-    .weighted_strength = -0.5,
-    .cellular_distance = .euclidean,
-    .cellular_return = .distance2,
-    .cellular_jitter_mod = 1.0,
-};
 
 pub fn render() !void {
     rl.initAudioDevice(); // Initialize audio device
@@ -84,27 +68,12 @@ pub fn render() !void {
     //Player object declaration
     var playerPos = rl.Vector2.init(screenWidth / 2, screenHeight / 2);
 
+    //Generating leveldata
+    const levelData: map.MapData = try map.getLevelDataFromMapString(&tile_textures, mapstring);
     // Main game loop
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
         // Update
         //----------------------------------------------------------------------------------
-        if (rl.isKeyDown(.right)) {
-            playerPos.x += player_speed;
-        }
-        if (rl.isKeyDown(.left)) {
-            playerPos.x -= player_speed;
-        }
-        if (rl.isKeyDown(.up)) {
-            playerPos.y -= player_speed;
-        }
-        if (rl.isKeyDown(.down)) {
-            playerPos.y += player_speed;
-        }
-        if (rl.isKeyDown(.right_shift)) {
-            player_speed = 4.0;
-        } else {
-            player_speed = 2.0;
-        }
 
         camera.target = .init(playerPos.x + 12, playerPos.y + 16);
         // Draw
@@ -117,7 +86,32 @@ pub fn render() !void {
         camera.begin();
         defer camera.end();
 
-        try map.drawMapfromMapString(&tile_textures, mapstring);
+        try map.drawMapTiles(levelData.mapTiles);
+
+        const playerHitbox = rl.Rectangle{ .x = playerPos.x, .y = playerPos.y, .height = 32.0, .width = 24.0 };
+        const mapCollision = try map.checkCollisions(playerHitbox, levelData.collisionData, playerPos);
+
+        if (mapCollision.collides) {
+            playerPos = playerPos.moveTowards(mapCollision.collidedHitbox, mapCollision.distance);
+        } else {
+            if (rl.isKeyDown(.right)) {
+                playerPos.x += player_speed;
+            }
+            if (rl.isKeyDown(.left)) {
+                playerPos.x -= player_speed;
+            }
+            if (rl.isKeyDown(.up)) {
+                playerPos.y -= player_speed;
+            }
+            if (rl.isKeyDown(.down)) {
+                playerPos.y += player_speed;
+            }
+            if (rl.isKeyDown(.right_shift)) {
+                player_speed = 4.0;
+            } else {
+                player_speed = 2.0;
+            }
+        }
 
         rl.drawTextureV(player_idle, playerPos, .white);
 
